@@ -1,0 +1,17 @@
+{
+  "name": "opencode-stats-plugin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bun x tsc --noEmit"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "@opencode-ai/plugin": "1.4.7"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.8.3"
+  }
+}
