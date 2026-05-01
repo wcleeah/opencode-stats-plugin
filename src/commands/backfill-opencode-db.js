@@ -44,3 +44,5 @@ export async function backfillOpenCodeDb(options = {}) {
     client.close()
   }
 }
+
+await backfillOpenCodeDb({fresh: true});

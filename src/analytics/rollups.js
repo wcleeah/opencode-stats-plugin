@@ -100,7 +100,7 @@ async function recomputeSessionRollups(turso, sessionIDs) {
           ? AS updated_at
         FROM turn_stats, response_stats, tool_stats
       `,
-      [session.id, session.root_session_id, session.project_id, nowValue()],
+      [session.id, session.id, session.root_session_id, session.project_id, nowValue()],
     )
     rows.push(rollup)
   }
