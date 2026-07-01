@@ -1,4 +1,5 @@
 import { deriveFacts } from "../analytics/derive.js"
+import { createLocalSqlite } from "../analytics/local-sqlite.js"
 import { loadOpenCodeData } from "../analytics/opencode-db.js"
 import { createReportRun } from "../analytics/report.js"
 import { rebuildRollups } from "../analytics/rollups.js"
@@ -9,6 +10,7 @@ import { sumCounts, toErrorMessage } from "../analytics/utils.js"
 export async function backfillOpenCodeDb(options = {}) {
   const run = createReportRun(options.fresh ? "usage-tracker-backfill-fresh" : "usage-tracker-backfill", { destructive: options.fresh ?? false })
   const client = getTursoClient()
+  if (!client) return run.finish({ ok: false, error: "Turso not configured (missing TURSO_DATABASE_URL / TURSO_AUTH_TOKEN)" })
   try {
     run.log("Starting OpenCode DB backfill", { fresh: options.fresh ?? false })
     if (options.fresh) {
@@ -36,13 +38,20 @@ export async function backfillOpenCodeDb(options = {}) {
       tool_payloads: facts.tool_payloads.length,
     })
     const counts = await upsertFacts(client, facts, run.log)
-    await rebuildRollups(client, run.log)
-    return run.finish({ ok: true, summary: { total_rows: sumCounts(counts), counts } })
+
+    // Populate local SQLite mirror
+    const localSqlite = createLocalSqlite(run.log)
+    try {
+      await localSqlite.ensureSchema()
+      await localSqlite.writeFacts(facts)
+      await rebuildRollups(client, run.log)
+      return run.finish({ ok: true, summary: { total_rows: sumCounts(counts), counts } })
+    } finally {
+      localSqlite.close()
+    }
   } catch (error) {
     return run.finish({ ok: false, summary: {}, error: toErrorMessage(error) })
   } finally {
-    client.close()
+    client?.close()
   }
 }
-
-await backfillOpenCodeDb({fresh: true});

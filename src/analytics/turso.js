@@ -26,8 +26,7 @@ async function runInChunks(client, statements) {
 export function getTursoClient() {
   const url = process.env.TURSO_DATABASE_URL
   const authToken = process.env.TURSO_AUTH_TOKEN
-  if (!url) throw new Error("Missing TURSO_DATABASE_URL")
-  if (!authToken) throw new Error("Missing TURSO_AUTH_TOKEN")
+  if (!url || !authToken) return null
   return createClient({ url, authToken })
 }
 
@@ -81,6 +80,7 @@ export async function replaceRollups(client, rollups) {
 
 export function createTurso() {
   const client = getTursoClient()
+  if (!client) return null
   return {
     client,
     ensureSchema: () => ensureSchema(client),

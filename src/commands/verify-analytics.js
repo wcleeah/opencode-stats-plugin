@@ -16,6 +16,7 @@ const checks = [
 export async function verifyAnalytics() {
   const run = createReportRun("usage-tracker-verify-analytics")
   const client = getTursoClient()
+  if (!client) return run.finish({ ok: false, error: "Turso not configured (missing TURSO_DATABASE_URL / TURSO_AUTH_TOKEN)" })
   try {
     const counts = {}
     run.log("Starting analytics verification", { check_count: checks.length })
@@ -29,6 +30,6 @@ export async function verifyAnalytics() {
   } catch (error) {
     return run.finish({ ok: false, error: toErrorMessage(error) })
   } finally {
-    client.close()
+    client?.close()
   }
 }

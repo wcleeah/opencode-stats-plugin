@@ -1,15 +1,18 @@
 import { createOpenCodeHydrator } from "./history.js"
 import { createTrackerState } from "./normalize.js"
 import { createIngestionQueue } from "./queue.js"
+import { createLocalSqlite } from "../../src/analytics/local-sqlite.js"
 
 export const UsageTracker = async ({ project }) => {
   const state = createTrackerState(project)
   const history = createOpenCodeHydrator({ state })
   await history.hydrateSessions()
+  const localSqlite = createLocalSqlite(console)
   const queue = createIngestionQueue({
     project,
     state,
     ensureEventContext: history.hydrateEventContext,
+    localSqlite,
   })
   await queue.start()
 

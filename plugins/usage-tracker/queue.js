@@ -72,6 +72,7 @@ export function createIngestionQueue({
   logger = console,
   ensureEventContext = async () => {},
   turso: providedTurso,
+  localSqlite: providedLocalSqlite,
   outbox: providedOutbox,
   setTimeoutFn = setTimeout,
   clearTimeoutFn = clearTimeout,
@@ -81,6 +82,7 @@ export function createIngestionQueue({
 }) {
   const processID = `pid-${process.pid}-${Date.now()}`
   const turso = providedTurso ?? createTurso()
+  const localSqlite = providedLocalSqlite
   const outbox = providedOutbox ?? createOutbox(processID)
   let pendingFacts = emptyFacts()
   let pendingTouched = emptyTouched()
@@ -110,7 +112,8 @@ export function createIngestionQueue({
 
   async function init() {
     if (initialized) return
-    await turso.ensureSchema()
+    if (turso) await turso.ensureSchema()
+    if (localSqlite) await localSqlite.ensureSchema()
     initialized = true
   }
 
@@ -206,7 +209,8 @@ export function createIngestionQueue({
     const batch = outbox.read(file)
     const progress = progressIndexForFile(file)
     await init()
-    await turso.writeFacts(batch.facts)
+    if (turso) await turso.writeFacts(batch.facts)
+    if (localSqlite) await localSqlite.writeFacts(batch.facts)
 
     if (!hasTouched(batch.touched)) {
       outbox.removeFile(file)
@@ -271,8 +275,10 @@ export function createIngestionQueue({
 
     try {
       await init()
-      const rollups = await recomputeTouchedRollups(turso, touched)
-      await turso.replaceRollups(rollups)
+      const readSource = localSqlite ?? turso
+      if (!readSource) return
+      const rollups = await recomputeTouchedRollups(readSource, touched)
+      if (turso) await turso.replaceRollups(rollups)
       for (const [file] of files) {
         outbox.removeFile(file)
         journalProgress.delete(file)
@@ -427,7 +433,8 @@ export function createIngestionQueue({
     async close() {
       await this.flush()
       closed = true
-      await turso.close()
+      if (turso) await turso.close()
+      if (localSqlite) localSqlite.close()
     },
     async replayAllOutbox() {
       await replayOutbox(outbox.listAllOrphans())
